@@ -1,0 +1,713 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>GST Invoice Maker — Kaif</title>
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;900&family=DM+Sans:ital,wght@0,300;0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        :root {
+            --ink: #1a1a2e;
+            --ink-muted: #4a4a6a;
+            --gold: #c9a84c;
+            --gold-light: #f0d98a;
+            --gold-pale: #fdf6e3;
+            --cream: #fafaf7;
+            --white: #ffffff;
+            --border: #e2ddd5;
+            --border-strong: #c9c0b0;
+            --success: #2d6a4f;
+            --danger: #9b2226;
+            --accent: #1a4a8a;
+            --accent-light: #e8f0fb;
+            --shadow-soft: 0 2px 12px rgba(26,26,46,0.08);
+            --shadow-medium: 0 8px 32px rgba(26,26,46,0.14);
+            --shadow-strong: 0 16px 56px rgba(26,26,46,0.18);
+            --radius: 10px;
+            --radius-sm: 6px;
+        }
+
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: 'DM Sans', sans-serif;
+            background: var(--ink);
+            background-image: 
+                radial-gradient(ellipse at 20% 20%, rgba(201,168,76,0.12) 0%, transparent 60%),
+                radial-gradient(ellipse at 80% 80%, rgba(26,74,138,0.15) 0%, transparent 60%);
+            min-height: 100vh;
+            padding: 32px 16px 64px;
+            color: var(--ink);
+        }
+
+        /* ── PAGE HEADER ── */
+        .page-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .page-header .brand {
+            font-family: 'Playfair Display', serif;
+            font-weight: 900;
+            font-size: 2.6rem;
+            color: var(--gold-light);
+            letter-spacing: -0.01em;
+            line-height: 1;
+        }
+        .page-header .brand span {
+            color: var(--white);
+        }
+        .page-header .tagline {
+            font-size: 0.82rem;
+            color: rgba(255,255,255,0.45);
+            letter-spacing: 0.12em;
+            text-transform: uppercase;
+            margin-top: 6px;
+            font-weight: 300;
+        }
+
+        /* ── MAIN CARD ── */
+        .card {
+            max-width: 1040px;
+            margin: 0 auto;
+            background: var(--cream);
+            border-radius: 18px;
+            box-shadow: var(--shadow-strong), 0 0 0 1px rgba(201,168,76,0.2);
+            overflow: hidden;
+        }
+
+        /* ── TOP RIBBON ── */
+        .ribbon {
+            background: linear-gradient(135deg, var(--ink) 0%, #2a1f5e 100%);
+            padding: 24px 32px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+            flex-wrap: wrap;
+        }
+        .ribbon-left {
+            display: flex;
+            align-items: center;
+            gap: 18px;
+        }
+        .invoice-badge {
+            background: linear-gradient(135deg, var(--gold) 0%, var(--gold-light) 100%);
+            color: var(--ink);
+            font-family: 'Playfair Display', serif;
+            font-weight: 700;
+            font-size: 0.72rem;
+            letter-spacing: 0.14em;
+            text-transform: uppercase;
+            padding: 6px 16px;
+            border-radius: 100px;
+        }
+        .inv-meta {
+            display: flex;
+            gap: 24px;
+            align-items: center;
+        }
+        .inv-meta-item {
+            display: flex;
+            flex-direction: column;
+            gap: 2px;
+        }
+        .inv-meta-item label {
+            font-size: 0.68rem;
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+            color: rgba(255,255,255,0.4);
+            font-weight: 500;
+        }
+        .inv-meta-item span {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.88rem;
+            color: var(--gold-light);
+            font-weight: 600;
+        }
+
+        /* ── LOGO/SIGNATURE UPLOAD STRIP ── */
+        .upload-strip {
+            background: var(--white);
+            border-bottom: 1px solid var(--border);
+            padding: 18px 32px;
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        .upload-btn {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 20px;
+            border: 1.5px dashed var(--border-strong);
+            border-radius: var(--radius-sm);
+            cursor: pointer;
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.85rem;
+            color: var(--ink-muted);
+            font-weight: 500;
+            transition: all 0.2s;
+            background: var(--cream);
+            position: relative;
+        }
+        .upload-btn:hover { border-color: var(--gold); color: var(--gold); background: var(--gold-pale); }
+        .upload-btn input[type="file"] { position: absolute; inset: 0; opacity: 0; cursor: pointer; }
+        .upload-btn .icon { font-size: 1.2rem; }
+        .upload-preview-wrap {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .upload-preview {
+            height: 48px;
+            max-width: 120px;
+            object-fit: contain;
+            border-radius: 4px;
+            border: 1px solid var(--border);
+            padding: 4px;
+            background: white;
+            display: none;
+        }
+        .remove-img {
+            font-size: 0.75rem;
+            color: var(--danger);
+            cursor: pointer;
+            background: none;
+            border: none;
+            font-family: 'DM Sans', sans-serif;
+            font-weight: 600;
+            display: none;
+        }
+        .upload-strip-label {
+            font-size: 0.75rem;
+            color: var(--ink-muted);
+            font-weight: 400;
+        }
+
+        /* ── BODY ── */
+        .card-body {
+            padding: 32px;
+        }
+
+        /* ── SECTIONS ── */
+        .section {
+            margin-bottom: 28px;
+        }
+        .section-title {
+            font-family: 'Playfair Display', serif;
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: var(--ink);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 18px;
+            padding-bottom: 10px;
+            border-bottom: 1.5px solid var(--border);
+        }
+        .section-title .dot {
+            width: 8px; height: 8px;
+            background: var(--gold);
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+
+        /* ── FORM GRID ── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+            gap: 16px;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .form-group.wide { grid-column: 1 / -1; }
+        .form-group label {
+            font-size: 0.75rem;
+            font-weight: 600;
+            letter-spacing: 0.06em;
+            text-transform: uppercase;
+            color: var(--ink-muted);
+        }
+        .form-group label .req { color: var(--gold); margin-left: 2px; }
+        .form-group input,
+        .form-group textarea {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.92rem;
+            padding: 10px 14px;
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius-sm);
+            background: var(--white);
+            color: var(--ink);
+            transition: border-color 0.2s, box-shadow 0.2s;
+            outline: none;
+        }
+        .form-group input:focus,
+        .form-group textarea:focus {
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201,168,76,0.12);
+        }
+        .form-group textarea {
+            min-height: 72px;
+            resize: vertical;
+            line-height: 1.5;
+        }
+        .pincode-status {
+            font-size: 0.72rem;
+            color: var(--ink-muted);
+            min-height: 1em;
+        }
+        .pincode-status.loading { color: var(--accent); }
+        .pincode-status.error { color: var(--danger); }
+        .pincode-status.success { color: var(--success); }
+
+        /* ── TABLE ── */
+        .table-wrap {
+            overflow-x: auto;
+            border-radius: var(--radius);
+            border: 1.5px solid var(--border);
+            background: var(--white);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            min-width: 700px;
+        }
+        thead tr th {
+            background: linear-gradient(135deg, var(--ink) 0%, #2a1f5e 100%);
+            color: rgba(255,255,255,0.75);
+            padding: 12px 14px;
+            font-size: 0.73rem;
+            font-weight: 600;
+            letter-spacing: 0.09em;
+            text-transform: uppercase;
+            text-align: left;
+            white-space: nowrap;
+        }
+        thead tr th:first-child { width: 44px; text-align: center; }
+        thead tr th.col-hsn { width: 110px; }
+        thead tr th.col-qty { width: 80px; }
+        thead tr th.col-rate { width: 100px; }
+        thead tr th.col-gst { width: 80px; }
+        thead tr th.col-total { width: 110px; }
+        thead tr th.col-action { width: 70px; text-align: center; }
+
+        tbody tr { transition: background 0.15s; }
+        tbody tr:nth-child(even) td { background: #faf9f7; }
+        tbody tr:hover td { background: var(--gold-pale); }
+
+        tbody td {
+            padding: 8px 10px;
+            border-bottom: 1px solid var(--border);
+            vertical-align: middle;
+        }
+        tbody td input {
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.88rem;
+            width: 100%;
+            padding: 8px 10px;
+            border: 1.5px solid transparent;
+            border-radius: var(--radius-sm);
+            background: transparent;
+            color: var(--ink);
+            transition: all 0.15s;
+            outline: none;
+        }
+        tbody td input:focus {
+            background: var(--white);
+            border-color: var(--gold);
+            box-shadow: 0 0 0 3px rgba(201,168,76,0.1);
+        }
+        tbody td input[readonly] {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--accent);
+            font-size: 0.85rem;
+            cursor: default;
+            text-align: right;
+        }
+        .sno-cell {
+            text-align: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.78rem;
+            color: var(--ink-muted);
+            font-weight: 600;
+        }
+        .del-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px; height: 28px;
+            margin: 0 auto;
+            background: #ffeaea;
+            color: var(--danger);
+            border: 1.5px solid #ffc0c0;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 1rem;
+            transition: all 0.15s;
+            line-height: 1;
+        }
+        .del-btn:hover { background: var(--danger); color: white; border-color: var(--danger); }
+
+        .add-row-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 14px;
+            padding: 10px 22px;
+            background: var(--accent-light);
+            color: var(--accent);
+            border: 1.5px solid #b8d0f5;
+            border-radius: var(--radius-sm);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.88rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .add-row-btn:hover { background: var(--accent); color: white; border-color: var(--accent); }
+
+        /* ── SUMMARY ── */
+        .summary-wrap {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 28px;
+        }
+        .summary-box {
+            background: var(--white);
+            border: 1.5px solid var(--border);
+            border-radius: var(--radius);
+            overflow: hidden;
+            min-width: 320px;
+            box-shadow: var(--shadow-soft);
+        }
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 11px 20px;
+            border-bottom: 1px solid var(--border);
+            font-size: 0.9rem;
+        }
+        .summary-row:last-child { border-bottom: none; }
+        .summary-row .lbl { color: var(--ink-muted); font-weight: 400; }
+        .summary-row .val {
+            font-family: 'JetBrains Mono', monospace;
+            font-weight: 600;
+            color: var(--ink);
+            font-size: 0.88rem;
+        }
+        .summary-row.grand {
+            background: linear-gradient(135deg, var(--ink) 0%, #2a1f5e 100%);
+            padding: 14px 20px;
+        }
+        .summary-row.grand .lbl {
+            color: rgba(255,255,255,0.7);
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+        .summary-row.grand .val {
+            color: var(--gold-light);
+            font-size: 1.1rem;
+        }
+
+        /* ── BUTTONS ── */
+        .btn-row {
+            display: flex;
+            gap: 14px;
+            justify-content: center;
+            margin-top: 36px;
+            flex-wrap: wrap;
+        }
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            padding: 13px 32px;
+            border-radius: var(--radius-sm);
+            font-family: 'DM Sans', sans-serif;
+            font-size: 0.92rem;
+            font-weight: 600;
+            cursor: pointer;
+            border: none;
+            transition: all 0.25s;
+            letter-spacing: 0.02em;
+        }
+        .btn-generate {
+            background: linear-gradient(135deg, var(--gold) 0%, #b8912a 100%);
+            color: var(--ink);
+            box-shadow: 0 4px 16px rgba(201,168,76,0.35);
+        }
+        .btn-generate:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 24px rgba(201,168,76,0.45);
+        }
+        .btn-reset {
+            background: var(--white);
+            color: var(--ink-muted);
+            border: 1.5px solid var(--border-strong);
+        }
+        .btn-reset:hover { background: #f5f0e8; color: var(--ink); border-color: var(--gold); }
+
+        /* ── TOAST ── */
+        .toast {
+            position: fixed;
+            bottom: 28px;
+            right: 28px;
+            background: var(--ink);
+            color: white;
+            padding: 12px 22px;
+            border-radius: var(--radius);
+            font-size: 0.88rem;
+            font-weight: 500;
+            box-shadow: var(--shadow-medium);
+            transform: translateY(80px);
+            opacity: 0;
+            transition: all 0.35s cubic-bezier(.34,1.56,.64,1);
+            z-index: 1000;
+            border-left: 4px solid var(--gold);
+        }
+        .toast.show { transform: translateY(0); opacity: 1; }
+
+        /* ── DIVIDER ── */
+        .divider { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+
+        /* Required field error state */
+        .form-group input.error,
+        .form-group textarea.error {
+            border-color: #e74c3c !important;
+            box-shadow: 0 0 0 3px rgba(231,76,60,0.15) !important;
+        }
+
+                @media (max-width: 600px) {
+            .card-body { padding: 20px 16px; }
+            .ribbon { padding: 18px 20px; }
+            .upload-strip { padding: 14px 20px; }
+            .inv-meta { gap: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="page-header">
+    <div class="brand"><span>GST</span> Invoice</div>
+    <div class="tagline">Kaif Enterprise · Saharanpur</div>
+</div>
+
+<div class="card">
+
+    <!-- RIBBON -->
+    <div class="ribbon">
+        <div class="ribbon-left">
+            <div class="invoice-badge">Tax Invoice</div>
+            <div class="inv-meta">
+                <div class="inv-meta-item">
+                    <label>Invoice No.</label>
+                    <span id="invoiceNumber">—</span>
+                </div>
+                <div class="inv-meta-item">
+                    <label>Date</label>
+                    <span id="invoiceDate">—</span>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- UPLOAD STRIP -->
+    <div class="upload-strip">
+        <!-- Logo -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <label class="upload-btn">
+                <span class="icon">🖼️</span>
+                <span>Upload Logo</span>
+                <input type="file" id="logoUpload" accept="image/*">
+            </label>
+            <div class="upload-preview-wrap">
+                <img id="logoPreview" class="upload-preview" alt="Logo">
+                <button class="remove-img" id="removeLogoBtn" onclick="removeImage('logo')">✕ Remove</button>
+            </div>
+            <span class="upload-strip-label" id="logoHint">No logo uploaded</span>
+        </div>
+
+        <div style="width:1px;height:40px;background:var(--border);"></div>
+
+        <!-- Signature -->
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+            <label class="upload-btn">
+                <span class="icon">✍️</span>
+                <span>Upload Signature</span>
+                <input type="file" id="signatureUpload" accept="image/*">
+            </label>
+            <div class="upload-preview-wrap">
+                <img id="signaturePreview" class="upload-preview" alt="Signature">
+                <button class="remove-img" id="removeSignBtn" onclick="removeImage('signature')">✕ Remove</button>
+            </div>
+            <span class="upload-strip-label" id="signHint">No signature uploaded</span>
+        </div>
+    </div>
+
+    <!-- BODY -->
+    <div class="card-body">
+
+        <!-- COMPANY DETAILS -->
+        <div class="section">
+            <div class="section-title"><span class="dot"></span> Seller Details</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Company / Seller Name <span class="req">*</span></label>
+                    <input type="text" id="companyName" placeholder="Seller name">
+                </div>
+                <div class="form-group">
+                    <label>GSTIN <span class="req">*</span></label>
+                    <input type="text" id="companyGSTIN" placeholder="GSTIN number">
+                </div>
+                <div class="form-group">
+                    <label>Phone <span class="req">*</span></label>
+                    <input type="text" id="companyPhone" placeholder="Phone number">
+                </div>
+                <div class="form-group">
+                    <label>Pincode <span class="req">*</span></label>
+                    <input type="text" id="companyPincode" placeholder="6-digit pincode" inputmode="numeric" maxlength="6" required>
+                    <small id="companyPincodeStatus" class="pincode-status"></small>
+                </div>
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" id="companyCity" placeholder="Auto-filled from pincode" readonly>
+                </div>
+                <div class="form-group">
+                    <label>State</label>
+                    <input type="text" id="companyState" placeholder="Auto-filled from pincode" readonly>
+                </div>
+                <div class="form-group wide">
+                    <label>Address <span class="req">*</span></label>
+                    <textarea id="companyAddress" placeholder="Full address"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- BUYER DETAILS -->
+        <div class="section">
+            <div class="section-title"><span class="dot"></span> Buyer Details</div>
+            <div class="form-grid">
+                <div class="form-group">
+                    <label>Buyer Name <span class="req">*</span></label>
+                    <input type="text" id="buyerName" placeholder="Enter buyer name">
+                </div>
+                <div class="form-group">
+                    <label>Buyer GSTIN</label>
+                    <input type="text" id="buyerGSTIN" placeholder="Optional">
+                </div>
+                <div class="form-group">
+                    <label>Buyer Phone <span class="req">*</span></label>
+                    <input type="text" id="buyerPhone" placeholder="Buyer phone number">
+                </div>
+                <div class="form-group">
+                    <label>Pincode <span class="req">*</span></label>
+                    <input type="text" id="buyerPincode" placeholder="6-digit pincode" inputmode="numeric" maxlength="6" required>
+                    <small id="buyerPincodeStatus" class="pincode-status"></small>
+                </div>
+                <div class="form-group">
+                    <label>City</label>
+                    <input type="text" id="buyerCity" placeholder="Auto-filled from pincode" readonly>
+                </div>
+                <div class="form-group">
+                    <label>State</label>
+                    <input type="text" id="buyerState" placeholder="Auto-filled from pincode" readonly>
+                </div>
+                <div class="form-group wide">
+                    <label>Buyer Address <span class="req">*</span></label>
+                    <textarea id="buyerAddress" placeholder="Buyer full address"></textarea>
+                </div>
+            </div>
+        </div>
+
+        <hr class="divider">
+
+        <!-- PRODUCT TABLE -->
+        <div class="section">
+            <div class="section-title"><span class="dot"></span> Items / Products</div>
+            <div class="table-wrap">
+                <table id="productTable">
+                    <thead>
+                        <tr>
+                            <th>#</th>
+                            <th>Item Description</th>
+                            <th class="col-hsn">HSN / SAC</th>
+                            <th class="col-qty">Qty</th>
+                            <th class="col-rate">Rate (₹)</th>
+                            <th class="col-gst">GST %</th>
+                            <th class="col-total">Total (₹)</th>
+                            <th class="col-action">Del</th>
+                        </tr>
+                    </thead>
+                    <tbody id="productTableBody"></tbody>
+                </table>
+            </div>
+            <button class="add-row-btn" onclick="addRow()">
+                <span>＋</span> Add Item
+            </button>
+        </div>
+
+        <!-- SUMMARY -->
+        <div class="summary-wrap">
+            <div class="summary-box">
+                <div class="summary-row">
+                    <span class="lbl">Subtotal (before tax)</span>
+                    <span class="val">₹ <span id="subtotal">0.00</span></span>
+                </div>
+                <div class="summary-row">
+                    <span class="lbl">CGST</span>
+                    <span class="val">₹ <span id="cgstDisplay">0.00</span></span>
+                </div>
+                <div class="summary-row">
+                    <span class="lbl">SGST</span>
+                    <span class="val">₹ <span id="sgstDisplay">0.00</span></span>
+                </div>
+                <div class="summary-row">
+                    <span class="lbl">Total GST</span>
+                    <span class="val">₹ <span id="totalGST">0.00</span></span>
+                </div>
+                <div class="summary-row grand">
+                    <span class="lbl">Grand Total</span>
+                    <span class="val">₹ <span id="grandTotal">0.00</span></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- BUTTONS -->
+        <div class="btn-row">
+            <button class="btn btn-generate" onclick="generatePDF()">
+                <span>⬇</span> Generate PDF
+            </button>
+            <button class="btn btn-reset" onclick="resetInvoice()">
+                <span>↺</span> Reset Invoice
+            </button>
+        </div>
+
+    </div><!-- /card-body -->
+</div><!-- /card -->
+
+<div class="toast" id="toast"></div>
+
+<script src="script.js"></script>
+<script>
+window.addEventListener('load', function () {
+    setTimeout(function () {
+        if (window.__gstInvoiceBooted) return;
+
+        var banner = document.createElement('div');
+        banner.style.cssText = 'max-width:1040px;margin:16px auto 0;padding:14px 18px;background:#fff4e5;color:#7a4b00;border:1px solid #f0c36d;border-radius:10px;font:500 14px/1.5 sans-serif;box-shadow:0 4px 18px rgba(0,0,0,0.08);';
+        banner.innerHTML = 'JavaScript start nahi hui. Phone par ye tab hota hai jab <code>index.html</code> file manager preview se open hoti hai aur linked <code>script.js</code> load nahi hoti. Is file ko local server ya hosted link se <code>http/https</code> par kholo, direct preview se nahi.';
+        document.body.insertBefore(banner, document.body.firstChild);
+    }, 700);
+});
+</script>
+</body>
+</html>
